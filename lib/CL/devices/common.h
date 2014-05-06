@@ -75,9 +75,12 @@
 
 const char* llvm_codegen (const char* tmpdir,
                           cl_kernel kernel,
-                          cl_device_id device);
+                          cl_device_id device,
+                          const char *function_name);
 
 void fill_dev_image_t (dev_image_t* di, struct pocl_argument* parg, 
                        cl_int device);
+
+void* memalign_alloc(size_t align_width, size_t size);
 
 #endif
