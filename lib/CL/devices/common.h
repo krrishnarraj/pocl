@@ -73,9 +73,11 @@
 #define POCL_DEVICES_PREFERRED_VECTOR_WIDTH_HALF POCL_DEVICES_PREFERRED_VECTOR_WIDTH_SHORT
 #define POCL_DEVICES_NATIVE_VECTOR_WIDTH_HALF POCL_DEVICES_NATIVE_VECTOR_WIDTH_SHORT
 
-const char* llvm_codegen (const char* tmpdir);
+const char* llvm_codegen (const char* tmpdir, const char *function_name);
 
 void fill_dev_image_t (dev_image_t* di, struct pocl_argument* parg, 
                        cl_int device);
+
+void* memalign_alloc(size_t align_width, size_t size);
 
 #endif
