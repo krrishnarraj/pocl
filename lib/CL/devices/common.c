@@ -78,9 +78,12 @@ llvm_codegen (const char* tmpdir, const char *function_name) {
       assert (error >= 0);
       
       error = snprintf (command, COMMAND_LENGTH,
+#ifndef ANDROID
 			LLC " " HOST_LLC_FLAGS " -o %s %s",
-			assembly,
-			bytecode);
+#else
+      ANDROID_POCL_PREFIX"/bin/llc " HOST_LLC_FLAGS " -o %s %s",
+#endif
+			assembly, bytecode);
       assert (error >= 0);
       
       if (pocl_verbose) {
@@ -93,9 +96,12 @@ llvm_codegen (const char* tmpdir, const char *function_name) {
       // For the pthread device, use device type is always the same as
       // the host.
       error = snprintf (command, COMMAND_LENGTH,
+#ifndef ANDROID
 			CLANG " " HOST_AS_FLAGS " -c -o %s.o %s ",
-			module,
-			assembly);
+#else
+      ANDROID_POCL_PREFIX"/bin/as " HOST_AS_FLAGS " -o %s.o %s ",
+#endif
+			module, assembly);
       assert (error >= 0);
       
       if (pocl_verbose) {
@@ -107,10 +113,13 @@ llvm_codegen (const char* tmpdir, const char *function_name) {
 
       // clang is used as the linker driver in LINK_CMD
       error = snprintf (command, COMMAND_LENGTH,
-                       LINK_CMD " " HOST_CLANG_FLAGS " " HOST_LD_FLAGS " "
-                        "-o %s %s.o",
-                       module,
-                       module);
+#ifndef ANDROID
+            LINK_CMD " " HOST_CLANG_FLAGS " " HOST_LD_FLAGS " -o %s %s.o",
+#else
+            ANDROID_POCL_PREFIX"/bin/ld " HOST_LD_FLAGS " -o %s %s.o "
+            " /system/lib/crtend_so.o /system/lib/crtbegin_so.o -ldl -lc ",
+#endif
+            module, module);
       assert (error >= 0);
 
       if (pocl_verbose) {
