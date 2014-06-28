@@ -844,7 +844,7 @@ case $host_cpu in
       #armv7l seems a popular host_cpu in distros. Clang uses "armv7", though
       arm*android*)
          llc_triple="armv7-unknown-linux-gnueabi"
-         HOST_CLANG_FLAGS="$HOST_CLANG_FLAGS -mfloat-abi=soft"
+         HOST_CLANG_FLAGS="$HOST_CLANG_FLAGS -mfloat-abi=soft -I"$SYSROOTDIR"/usr/include "
          HOST_LLC_FLAGS="$HOST_LLC_FLAGS -float-abi=soft"
          HOST_AS_FLAGS="$HOST_AS_FLAGS -mcpu=$llc_host_cpu -mfloat-abi=soft"
          HOST_LD_FLAGS="$HOST_LD_FLAGS -L/system/lib/ -shared ";;
@@ -1086,10 +1086,10 @@ AC_COMPILE_IFELSE(
   [ANDROID_PRESENT=ok]],
   [AC_MSG_RESULT(no)])
 
-if test x"$ANDROID_PRESENT" == ok;
+if test "$ANDROID_PRESENT" == ok;
 then
 AC_DEFINE([ANDROID], [1], [Defined to 1 if compiling for Android])
-
+AM_CONDITIONAL([ANDROID], [test "$ANDROID_PRESENT" = ok])
 AC_DEFINE([ANDROID_POCL_PREFIX],
                    ["/data/data/org.pocl.libs/files"],
                    [Directory  where pocl files are installed in android])
@@ -1198,7 +1198,7 @@ AC_SUBST([HOST_SIZEOF_VOID_P], [$ac_cv_sizeof_void_p])
 AC_CHECK_ALIGNOF([float16], [typedef float float16  __attribute__((__ext_vector_type__(16)));])
 AC_CHECK_ALIGNOF([double16], [typedef double double16  __attribute__((__ext_vector_type__(16)));])
 
-if test x"$ANDROID_PRESENT" == ok;
+if test "$ANDROID_PRESENT" == ok;
 then
 AC_MSG_NOTICE([Setting float16 & double16 alignments manually in cross-compile mode])
 AC_DEFINE([ALIGNOF_FLOAT16], 64)
