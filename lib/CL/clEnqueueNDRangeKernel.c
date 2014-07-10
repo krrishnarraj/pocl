@@ -169,8 +169,10 @@ POname(clEnqueueNDRangeKernel)(cl_command_queue command_queue,
             kernel->program->temp_dir, command_queue->device->short_name, 
             kernel->name, 
             local_x, local_y, local_z, offset_x, offset_y, offset_z);
-  mkdir (tmpdir, S_IRWXU);
 
+  if(access (tmpdir, F_OK) != 0) {
+    mkdir (tmpdir, S_IRWXU);
+  }
   
   error = snprintf
     (parallel_filename, POCL_FILENAME_LENGTH,
@@ -178,66 +180,49 @@ POname(clEnqueueNDRangeKernel)(cl_command_queue command_queue,
   if (error < 0)
     return CL_OUT_OF_HOST_MEMORY;
 
-  if (kernel->program->llvm_irs[0] == NULL)
-    {
-      error = snprintf
-        (kernel_filename, POCL_FILENAME_LENGTH,
-         "%s/%s/%s/kernel.bc", kernel->program->temp_dir, 
-         command_queue->device->short_name, kernel->name);
-
-      if (error < 0)
-        return CL_OUT_OF_HOST_MEMORY;
-
-      if (access (kernel_filename, F_OK) != 0) 
-        {
-          kernel_file = fopen(kernel_filename, "w+");
-          if (kernel_file == NULL)
-            return CL_OUT_OF_HOST_MEMORY;
-
-          n = fwrite(kernel->program->binaries[command_queue->device->dev_id], 1,
-                     kernel->program->binary_sizes[command_queue->device->dev_id], 
-                     kernel_file);
-          if (n < kernel->program->binary_sizes[command_queue->device->dev_id])
-            return CL_OUT_OF_HOST_MEMORY;
-  
-          fclose(kernel_file);
-
-#ifdef DEBUG_NDRANGE
-          printf("[kernel bc written] ");
-#endif
-        }
-      else
-        {
-#ifdef DEBUG_NDRANGE
-          printf("[kernel bc already written] ");
-#endif
-        }
-    }
-
   error = snprintf
     (so_filename, POCL_FILENAME_LENGTH,
      "%s/%s.so", tmpdir, kernel->name);
-
   if (error < 0)
     return CL_OUT_OF_HOST_MEMORY;
 
-  if (access (so_filename, F_OK) != 0)
+  if (access(so_filename, F_OK) != 0)
     {
+      if (kernel->program->llvm_irs[0] == NULL)
+      {
+        error = snprintf
+          (kernel_filename, POCL_FILENAME_LENGTH,
+           "%s/%s/%s/kernel.bc", kernel->program->temp_dir,
+           command_queue->device->short_name, kernel->name);
+
+        if (error < 0)
+          return CL_OUT_OF_HOST_MEMORY;
+
+        if (access (kernel_filename, F_OK) != 0)
+          {
+            kernel_file = fopen(kernel_filename, "w+");
+            if (kernel_file == NULL)
+              return CL_OUT_OF_HOST_MEMORY;
+
+            n = fwrite(kernel->program->binaries[command_queue->device->dev_id], 1,
+                       kernel->program->binary_sizes[command_queue->device->dev_id],
+                       kernel_file);
+            if (n < kernel->program->binary_sizes[command_queue->device->dev_id])
+              return CL_OUT_OF_HOST_MEMORY;
+
+            fclose(kernel_file);
+          }
+      }
+
       error = pocl_llvm_generate_workgroup_function
           (command_queue->device,
            kernel, local_x, local_y, local_z,
            parallel_filename, kernel_filename);
+
       if (error) return error;
 
-#ifdef DEBUG_NDRANGE
-      printf("[parallel bc created]\n");
-#endif
-    }
-  else
-    {
-#ifdef DEBUG_NDRANGE
-      printf("[parallel bc already created]\n");
-#endif
+      if(access (kernel_filename, F_OK) == 0)
+        remove_file(kernel_filename);
     }
   
   error = pocl_create_command (&command_node, command_queue,
