@@ -592,40 +592,44 @@ int pocl_llvm_get_kernel_metadata(cl_program program,
   // gets added to this file. No checks seem to fail if that file
   // is missing though, so it is left out from there for now
   std::string kobj_s = descriptor_filename; 
-  kobj_s += ".kernel_obj.c"; 
-  FILE *kobj_c = fopen( kobj_s.c_str(), "wc");
- 
-  fprintf(kobj_c, "\n #include <pocl_device.h>\n");
+  kobj_s += ".kernel_obj.c";
 
-  fprintf(kobj_c,
-    "void _%s_workgroup(void** args, struct pocl_context*);\n", kernel_name);
-  fprintf(kobj_c,
-    "void _%s_workgroup_fast(void** args, struct pocl_context*);\n", kernel_name);
+  if(access(kobj_s.c_str(), F_OK) != 0)
+  {
+	  FILE *kobj_c = fopen( kobj_s.c_str(), "wc");
 
-  fprintf(kobj_c,
-    "__attribute__((address_space(3))) __kernel_metadata _%s_md = {\n", kernel_name);
-  fprintf(kobj_c,
-    "     \"%s\", /* name */ \n", kernel_name );
-  fprintf(kobj_c,"     %d, /* num_args */\n", kernel->num_args);
-  fprintf(kobj_c,"     %d, /* num_locals */\n", kernel->num_locals);
-#if 0
-  // These are not used anymore. The launcher knows the arguments
-  // and sets them up, the device just obeys and launches with
-  // whatever arguments it gets. Remove if none of the private
-  // branches need them neither.
-  fprintf( kobj_c," #if _%s_NUM_LOCALS != 0\n",   kernel_name  );
-  fprintf( kobj_c,"     _%s_LOCAL_SIZE,\n",       kernel_name  );
-  fprintf( kobj_c," #else\n"    );
-  fprintf( kobj_c,"     {0}, \n"    );
-  fprintf( kobj_c," #endif\n"    );
-  fprintf( kobj_c,"     _%s_ARG_IS_LOCAL,\n",    kernel_name  );
-  fprintf( kobj_c,"     _%s_ARG_IS_POINTER,\n",  kernel_name  );
-  fprintf( kobj_c,"     _%s_ARG_IS_IMAGE,\n",    kernel_name  );
-  fprintf( kobj_c,"     _%s_ARG_IS_SAMPLER,\n",  kernel_name  );
-#endif
-  fprintf( kobj_c,"     _%s_workgroup_fast\n",   kernel_name  );
-  fprintf( kobj_c," };\n");
-  fclose(kobj_c);
+	  fprintf(kobj_c, "\n #include <pocl_device.h>\n");
+
+	  fprintf(kobj_c,
+	    "void _%s_workgroup(void** args, struct pocl_context*);\n", kernel_name);
+	  fprintf(kobj_c,
+	    "void _%s_workgroup_fast(void** args, struct pocl_context*);\n", kernel_name);
+
+	  fprintf(kobj_c,
+	    "__attribute__((address_space(3))) __kernel_metadata _%s_md = {\n", kernel_name);
+	  fprintf(kobj_c,
+	    "     \"%s\", /* name */ \n", kernel_name );
+	  fprintf(kobj_c,"     %d, /* num_args */\n", kernel->num_args);
+	  fprintf(kobj_c,"     %d, /* num_locals */\n", kernel->num_locals);
+	#if 0
+	  // These are not used anymore. The launcher knows the arguments
+	  // and sets them up, the device just obeys and launches with
+	  // whatever arguments it gets. Remove if none of the private
+	  // branches need them neither.
+	  fprintf( kobj_c," #if _%s_NUM_LOCALS != 0\n",   kernel_name  );
+	  fprintf( kobj_c,"     _%s_LOCAL_SIZE,\n",       kernel_name  );
+	  fprintf( kobj_c," #else\n"    );
+	  fprintf( kobj_c,"     {0}, \n"    );
+	  fprintf( kobj_c," #endif\n"    );
+	  fprintf( kobj_c,"     _%s_ARG_IS_LOCAL,\n",    kernel_name  );
+	  fprintf( kobj_c,"     _%s_ARG_IS_POINTER,\n",  kernel_name  );
+	  fprintf( kobj_c,"     _%s_ARG_IS_IMAGE,\n",    kernel_name  );
+	  fprintf( kobj_c,"     _%s_ARG_IS_SAMPLER,\n",  kernel_name  );
+	#endif
+	  fprintf( kobj_c,"     _%s_workgroup_fast\n",   kernel_name  );
+	  fprintf( kobj_c," };\n");
+	  fclose(kobj_c);
+	}
 #endif
   
   return 0;
