@@ -132,6 +132,12 @@ pocl_cpuinfo_detect_max_clock_frequency() {
 }
 
 
+#ifdef ANDROID
+#define CORE_DESC_PATTERN   "processor"
+#else
+#define CORE_DESC_PATTERN   "rocessor"
+#endif
+
 /**
  * Detects the number of parallel hardware threads supported by
  * the CPU by parsing the cpuinfo.
@@ -157,7 +163,7 @@ pocl_cpuinfo_detect_compute_unit_count() {
          system. In Meego Harmattan on ARM it prints Processor instead of
          processor */
       char* p = contents;
-      while ((p = strstr (p, "rocessor")) != NULL) 
+      while ((p = strstr (p, CORE_DESC_PATTERN)) != NULL)
         {
           cores++;
           /* Skip to the end of the line. Otherwise causes two cores
