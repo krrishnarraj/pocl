@@ -132,6 +132,8 @@ pocl_cpuinfo_detect_max_clock_frequency() {
 }
 
 
+#ifndef ANDROID
+
 /**
  * Detects the number of parallel hardware threads supported by
  * the CPU by parsing the cpuinfo.
@@ -157,7 +159,7 @@ pocl_cpuinfo_detect_compute_unit_count() {
          system. In Meego Harmattan on ARM it prints Processor instead of
          processor */
       char* p = contents;
-      while ((p = strstr (p, "rocessor")) != NULL) 
+      while ((p = strstr (p, "rocessor")) != NULL)
         {
           cores++;
           /* Skip to the end of the line. Otherwise causes two cores
@@ -209,6 +211,37 @@ pocl_cpuinfo_detect_compute_unit_count() {
     } 
   return -1;  
 }
+
+#else
+
+#define CPU_NUM_CORES_NODE    "/sys/devices/system/cpu/possible"
+
+int
+pocl_cpuinfo_detect_compute_unit_count()
+{
+  int cores = -1;
+
+  FILE *fp = fopen(CPU_NUM_CORES_NODE, "r");
+
+  // cpu/possible will of format
+  // 0        : for single-core devices
+  // 0-(n-1)  : for n-core cpus
+  if(fp)
+  {
+    cores = fgetc(fp) - '0';
+    if(!feof(fp))         // If more than 1 cores
+    {
+      fgetc(fp);          // Ignore '-'
+      fscanf(fp, "%d", &cores);
+    }
+    fclose(fp);
+    cores ++;             // always printed as (n-1)
+  }
+
+  return cores;
+}
+
+#endif
 
 void
 pocl_cpuinfo_append_cpu_name(cl_device_id device)

@@ -189,7 +189,10 @@ CL_API_SUFFIX__VERSION_1_0
   if (program->binaries == NULL)
     {
       snprintf (tmpdir, POCL_FILENAME_LENGTH, "%s/", program->temp_dir);
-      mkdir (tmpdir, S_IRWXU);
+
+      if(access (tmpdir, F_OK) != 0) {
+        mkdir (tmpdir, S_IRWXU);
+      }
 
       /* FIXME: these might have allocated already. The user might want to
          build the program with different compiler options and calls this
@@ -214,21 +217,31 @@ CL_API_SUFFIX__VERSION_1_0
           cl_device_id device = real_device_list[device_i];
           snprintf (device_tmpdir, POCL_FILENAME_LENGTH, "%s/%s", 
                     program->temp_dir, device->short_name);
-          mkdir (device_tmpdir, S_IRWXU);
+
+          if(access (device_tmpdir, F_OK) != 0) {
+            mkdir (device_tmpdir, S_IRWXU);
+          }
+
+#ifdef KERNEL_CACHE
+          check_and_invalidate_cache(program, device_i, device_tmpdir);
+#endif
 
           snprintf 
             (binary_file_name, POCL_FILENAME_LENGTH, "%s/%s", 
              device_tmpdir, POCL_PROGRAM_BC_FILENAME);
 
-          error = pocl_llvm_build_program
+          if(access (binary_file_name, F_OK) != 0)
+          {
+            error = pocl_llvm_build_program
               (program, device, device_i, tmpdir,
                binary_file_name, device_tmpdir,
-               user_options);     
+               user_options);
 
-          if (error != 0)
-          {
-            errcode = CL_BUILD_PROGRAM_FAILURE;
-            goto ERROR_CLEAN_BINARIES;
+            if (error != 0)
+            {
+              errcode = CL_BUILD_PROGRAM_FAILURE;
+              goto ERROR_CLEAN_BINARIES;
+            }
           }
 
           /* In case we cached the llvm::Module, we might not have
@@ -277,7 +290,10 @@ CL_API_SUFFIX__VERSION_1_0
                     program->temp_dir, real_device_list[device_i]->short_name);
           MEM_ASSERT(count >= POCL_FILENAME_LENGTH, ERROR_CLEAN_PROGRAM);
 
-          error = mkdir (device_tmpdir, S_IRWXU);
+          if(access (device_tmpdir, F_OK) != 0) {
+            error = mkdir (device_tmpdir, S_IRWXU);
+          }
+
           MEM_ASSERT(error, ERROR_CLEAN_PROGRAM);
 
           count = snprintf 

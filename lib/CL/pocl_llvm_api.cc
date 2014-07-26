@@ -76,6 +76,7 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 
 // Note - LLVM/Clang uses symbols defined in Khronos' headers in macros, 
 // causing compilation error if they are included before the LLVM headers.
@@ -83,6 +84,7 @@
 #include "pocl_runtime_config.h"
 #include "install-paths.h"
 #include "LLVMUtils.h"
+#include "pocl_util.h"
 
 using namespace clang;
 using namespace llvm;
@@ -357,8 +359,12 @@ int pocl_llvm_build_program(cl_program program,
   if (*mod == NULL)
     return CL_BUILD_PROGRAM_FAILURE;
 
+#ifndef KERNEL_CACHE
   if (pocl_get_bool_option("POCL_LEAVE_TEMP_DIRS", 0))
+#endif
+  {
     write_temporary_file(*mod, binary_file_name);
+  }
 
   // FIXME: cannot delete action as it contains something the llvm::Module
   // refers to. We should create it globally, at compiler initialization time.
@@ -514,7 +520,10 @@ int pocl_llvm_get_kernel_metadata(cl_program program,
 
   snprintf (tmpdir, POCL_FILENAME_LENGTH, "%s/%s", 
             device_tmpdir, kernel_name);
-  mkdir(tmpdir, S_IRWXU);
+
+  if(access (tmpdir, F_OK) != 0) {
+    mkdir(tmpdir, S_IRWXU);
+	}
 
   (void) snprintf(descriptor_filename, POCL_FILENAME_LENGTH,
                     "%s/%s/descriptor.so", device_tmpdir, kernel_name);
@@ -547,6 +556,8 @@ int pocl_llvm_get_kernel_metadata(cl_program program,
           os.flush();
           exit(1);
         }
+
+      remove_file(binary_filename);
     }
 
 
@@ -680,6 +691,7 @@ int pocl_llvm_get_kernel_metadata(cl_program program,
   kernel->reqd_wg_size[1] = reqdy;
   kernel->reqd_wg_size[2] = reqdz;
   
+#ifndef ANDROID
   // Generate the kernel_obj.c file. This should be optional
   // and generated only for the heterogeneous devices which need
   // these definitions to accompany the kernels, for the launcher
@@ -688,40 +700,45 @@ int pocl_llvm_get_kernel_metadata(cl_program program,
   // gets added to this file. No checks seem to fail if that file
   // is missing though, so it is left out from there for now
   std::string kobj_s = descriptor_filename; 
-  kobj_s += ".kernel_obj.c"; 
-  FILE *kobj_c = fopen( kobj_s.c_str(), "wc");
- 
-  fprintf(kobj_c, "\n #include <pocl_device.h>\n");
+  kobj_s += ".kernel_obj.c";
 
-  fprintf(kobj_c,
-    "void _%s_workgroup(void** args, struct pocl_context*);\n", kernel_name);
-  fprintf(kobj_c,
-    "void _%s_workgroup_fast(void** args, struct pocl_context*);\n", kernel_name);
+  if(access(kobj_s.c_str(), F_OK) != 0)
+  {
+	  FILE *kobj_c = fopen( kobj_s.c_str(), "wc");
 
-  fprintf(kobj_c,
-    "__attribute__((address_space(3))) __kernel_metadata _%s_md = {\n", kernel_name);
-  fprintf(kobj_c,
-    "     \"%s\", /* name */ \n", kernel_name );
-  fprintf(kobj_c,"     %d, /* num_args */\n", kernel->num_args);
-  fprintf(kobj_c,"     %d, /* num_locals */\n", kernel->num_locals);
-#if 0
-  // These are not used anymore. The launcher knows the arguments
-  // and sets them up, the device just obeys and launches with
-  // whatever arguments it gets. Remove if none of the private
-  // branches need them neither.
-  fprintf( kobj_c," #if _%s_NUM_LOCALS != 0\n",   kernel_name  );
-  fprintf( kobj_c,"     _%s_LOCAL_SIZE,\n",       kernel_name  );
-  fprintf( kobj_c," #else\n"    );
-  fprintf( kobj_c,"     {0}, \n"    );
-  fprintf( kobj_c," #endif\n"    );
-  fprintf( kobj_c,"     _%s_ARG_IS_LOCAL,\n",    kernel_name  );
-  fprintf( kobj_c,"     _%s_ARG_IS_POINTER,\n",  kernel_name  );
-  fprintf( kobj_c,"     _%s_ARG_IS_IMAGE,\n",    kernel_name  );
-  fprintf( kobj_c,"     _%s_ARG_IS_SAMPLER,\n",  kernel_name  );
+	  fprintf(kobj_c, "\n #include <pocl_device.h>\n");
+
+	  fprintf(kobj_c,
+	    "void _%s_workgroup(void** args, struct pocl_context*);\n", kernel_name);
+	  fprintf(kobj_c,
+	    "void _%s_workgroup_fast(void** args, struct pocl_context*);\n", kernel_name);
+
+	  fprintf(kobj_c,
+	    "__attribute__((address_space(3))) __kernel_metadata _%s_md = {\n", kernel_name);
+	  fprintf(kobj_c,
+	    "     \"%s\", /* name */ \n", kernel_name );
+	  fprintf(kobj_c,"     %d, /* num_args */\n", kernel->num_args);
+	  fprintf(kobj_c,"     %d, /* num_locals */\n", kernel->num_locals);
+	#if 0
+	  // These are not used anymore. The launcher knows the arguments
+	  // and sets them up, the device just obeys and launches with
+	  // whatever arguments it gets. Remove if none of the private
+	  // branches need them neither.
+	  fprintf( kobj_c," #if _%s_NUM_LOCALS != 0\n",   kernel_name  );
+	  fprintf( kobj_c,"     _%s_LOCAL_SIZE,\n",       kernel_name  );
+	  fprintf( kobj_c," #else\n"    );
+	  fprintf( kobj_c,"     {0}, \n"    );
+	  fprintf( kobj_c," #endif\n"    );
+	  fprintf( kobj_c,"     _%s_ARG_IS_LOCAL,\n",    kernel_name  );
+	  fprintf( kobj_c,"     _%s_ARG_IS_POINTER,\n",  kernel_name  );
+	  fprintf( kobj_c,"     _%s_ARG_IS_IMAGE,\n",    kernel_name  );
+	  fprintf( kobj_c,"     _%s_ARG_IS_SAMPLER,\n",  kernel_name  );
+	#endif
+	  fprintf( kobj_c,"     _%s_workgroup_fast\n",   kernel_name  );
+	  fprintf( kobj_c," };\n");
+	  fclose(kobj_c);
+	}
 #endif
-  fprintf( kobj_c,"     _%s_workgroup_fast\n",   kernel_name  );
-  fprintf( kobj_c," };\n");
-  fclose(kobj_c);
 
   pocl_llvm_get_kernel_arg_metadata(kernel_name, input, kernel);
 
