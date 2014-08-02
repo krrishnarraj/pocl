@@ -594,7 +594,7 @@ AC_ARG_ENABLE([kernel-cache],
               [cache_kernel="yes"])
 if test "$cache_kernel" = "yes"
 then
-  AC_DEFINE([KERNEL_CACHE], [], "Enabled kernel cache feature")
+  AC_DEFINE([POCL_KERNEL_CACHE], [], "Enabled kernel cache feature")
 fi
 
 
@@ -1275,11 +1275,15 @@ LIB_CURRENT_VERSION=4
 LIB_REVISION_VERSION=0
 LIB_AGE_VERSION=3
 LIB_FIRST_VERSION=$(($LIB_CURRENT_VERSION - $LIB_AGE_VERSION))
+BUILD_TIMESTAMP=""
 AC_SUBST([LIB_VERSION], ["$LIB_CURRENT_VERSION:$LIB_REVISION_VERSION:$LIB_AGE_VERSION"])
 AC_SUBST([LIB_CURRENT_VERSION], [$LIB_CURRENT_VERSION])
 AC_SUBST([LIB_REVISION_VERSION], [$LIB_REVISION_VERSION])
 AC_SUBST([LIB_AGE_VERSION], [$LIB_AGE_VERSION])
 AC_SUBST([LIB_FIRST_VERSION], [$LIB_FIRST_VERSION])
+AC_SUBST([BUILD_TIMESTAMP], [$( date +%G%m%d%H%M%N )])
+
+AC_DEFINE_UNQUOTED([POCL_BUILD_TIMESTAMP], ["$BUILD_TIMESTAMP"], [Timestamp of build])
 
 # The kernel compiler opt plugin shared library, however, changes more 
 # drastically. Let's try to follow the similar 'current' numbering as
